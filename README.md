@@ -11,11 +11,11 @@ identical workloads.
 
 Dashboard overview:
 
-![Dashboard screenshot](docs/assets/dashboard-screenshot.png)
+<img src="docs/assets/dashboard-screenshot.png" alt="Dashboard screenshot" width="700">
 
 Mean throughput (tok/s) by provider and prompt:
 
-![Tok per sec by prompt](docs/assets/tok-per-sec-by-prompt.png)
+<img src="docs/assets/tok-per-sec-by-prompt.png" alt="Tok per sec by prompt" width="700">
 
 ## What it measures
 
