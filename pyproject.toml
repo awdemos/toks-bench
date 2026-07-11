@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "toks-bench"
+version = "0.1.0"
+description = "Reproducible token-throughput benchmark for OpenAI-compatible LLM servers."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "openai>=1.35.0",
+    "pyyaml>=6.0",
+    "tabulate>=0.9",
+    "matplotlib>=3.7.0",
+    "pandas>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "respx>=0.21",
+    "ruff>=0.4",
+    "basedpyright>=1.12",
+]
+
+[project.scripts]
+toks-bench = "toks_bench.cli:main"
+toks-bench-aggregate = "toks_bench.cli:aggregate_cli"
+toks-bench-profile = "toks_bench.profiling_report:profiling_report_cli"
+toks-bench-chart = "toks_bench.charts:charts_cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["toks_bench"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+
+[tool.basedpyright]
+pythonVersion = "3.11"
+typeCheckingMode = "standard"

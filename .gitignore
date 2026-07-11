@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Generated benchmark outputs
+results/
+
+# Local tooling
+.desloppify/
+
+# Secrets / local config
+.env
+.env.local

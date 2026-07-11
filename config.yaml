@@ -1,0 +1,180 @@
+defaults:
+  runs: 10
+  max_tokens: 512
+  temperature: 0.7
+  top_p: 0.9
+
+providers:
+  llama-server-qwen:
+    kind: llama-server
+    base_url: http://localhost:8080/v1
+    model: Qwen3.6-35B-A3B-IQ2_S
+  llama-server-ornith:
+    kind: llama-server
+    base_url: http://localhost:8081/v1
+    model: Ornith-1.0-35B-Q4_K_M
+  vllm-qwen-fp8:
+    kind: vllm
+    base_url: http://localhost:8000/v1
+    model: qwen3.6-27b-fp8
+  vllm-qwen-fp8-docker:
+    kind: vllm
+    base_url: http://localhost:8000/v1
+    model: qwen3.6-27b-fp8
+  ollama-qwen:
+    kind: ollama
+    base_url: http://localhost:11434/v1
+    model: qwen3.6-27b-q4_k_m
+  ollama-ornith:
+    kind: ollama
+    base_url: http://localhost:11434/v1
+    model: ornith-1.0-35b-q4_k_m
+  vllm-nematron-fp8-docker:
+    kind: vllm
+    base_url: http://localhost:8001/v1
+    model: nemotron-3-nano-4b-fp8
+  tensorrt-nematron-fp8:
+    kind: tensorrt-llm
+    base_url: http://localhost:8002/v1
+    model: nematron-3-nano-4b-fp8-trt
+  vllm-nematron-3-nano-30b-a3b-nvfp4:
+    kind: vllm
+    base_url: http://localhost:8010/v1
+    model: nemotron-3-nano-30b-a3b-nvfp4
+  vllm-gemma4-26b-a4b-nvfp4:
+    kind: vllm
+    base_url: http://localhost:8005/v1
+    model: gemma4-26b-a4b-nvfp4
+  vllm-diffusiongemma-26b-a4b-it:
+    kind: vllm
+    base_url: http://localhost:8006/v1
+    model: diffusiongemma-26b-a4b-it
+  vllm-qwen3-4b-instruct-2507:
+    kind: vllm
+    base_url: http://localhost:8004/v1
+    model: qwen3-4b-instruct-2507
+  triton-vllm-qwen3-4b-instruct-2507:
+    kind: vllm
+    base_url: http://localhost:9000/v1
+    model: qwen3-4b-instruct-2507
+  tensorrt-qwen3-4b-instruct-2507:
+    kind: tensorrt-llm
+    base_url: http://localhost:8003/v1
+    model: Qwen3-4B-Instruct-2507
+  llama-server-qwen-q2k:
+    kind: llama-server
+    base_url: http://localhost:8083/v1
+    model: Qwen3.6-27B-Cerebellum-Q2K
+  llama-server-qwen-autoround-q2k:
+    kind: llama-server
+    base_url: http://localhost:8084/v1
+    model: Qwen3.6-27B-AutoRound-Q2K-MIXED
+  llama-server-qwen36-a3b-iq2:
+    kind: llama-server
+    base_url: http://localhost:8085/v1
+    model: Qwen3.6-35B-A3B-IQ2_S
+  llama-server-qwen3-4b-q2k:
+    kind: llama-server
+    base_url: http://localhost:8086/v1
+    model: Qwen3-4B-Instruct-2507-Q2K
+  llama-server-ternary-bonsai-8b:
+    kind: llama-server
+    base_url: http://localhost:8087/v1
+    model: Ternary-Bonsai-8B
+
+prompts:
+  short:
+    messages:
+      - role: user
+        content: Explain photosynthesis in one paragraph.
+  medium:
+    messages:
+      - role: system
+        content: You are a helpful assistant.
+      - role: user
+        content: |
+          Summarize the following article in three bullet points.
+          Artificial intelligence has advanced rapidly over the past decade.
+          Large language models can now generate coherent text, answer questions,
+          and assist with coding tasks. Researchers continue to improve efficiency,
+          safety, and alignment so that these systems remain useful and reliable.
+  code:
+    messages:
+      - role: system
+        content: You are a helpful coding assistant.
+      - role: user
+        content: Write a Python function that flattens a nested list of integers.
+  long:
+    messages:
+      - role: system
+        content: You are a helpful assistant.
+      - role: user
+        content: |
+          Read the following article and provide a detailed five-paragraph summary
+          covering the background, key technical contributions, experimental results,
+          limitations, and future directions.
+
+          Large language models have transformed natural language processing over
+          the past several years. Starting from transformer architectures and
+          scaling laws, researchers discovered that increasing model size and
+          training data leads to emergent capabilities such as in-context learning,
+          chain-of-thought reasoning, and tool use. These models are now deployed
+          in search engines, coding assistants, and conversational agents.
+
+          Key technical contributions include attention mechanisms, pre-training on
+          vast unlabeled corpora, alignment through reinforcement learning from human
+          feedback, and mixture-of-experts architectures that decouple parameter
+          count from active computation. Each advance has brought improvements in
+          fluency, factual recall, and instruction following while raising concerns
+          about compute cost and energy usage.
+
+          Experimental results show that scaling continues to improve perplexity and
+          downstream benchmark performance, though gains are diminishing on some
+          reasoning tasks. Smaller models trained longer or with higher-quality data
+          can rival larger predecessors, suggesting that data curation and training
+          efficiency are as important as raw scale.
+
+          Limitations include hallucinations, bias from training data, difficulty
+          with long-horizon planning, and high inference cost. Safety research
+          focuses on reducing harmful outputs, improving truthfulness, and enabling
+          human oversight. Multimodal extensions add vision and audio understanding
+          but introduce new evaluation challenges.
+
+          Future directions include more efficient architectures, better retrieval
+          augmentation, improved reasoning with verifiable intermediate steps, and
+          autonomous agentic systems. As models become more capable, careful evaluation
+          and governance will be essential to ensure broadly beneficial deployment.
+  tool:
+    messages:
+      - role: system
+        content: You are a helpful assistant with access to local tools.
+      - role: user
+        content: |
+          Please do the following:
+          1. List the files in the current directory.
+          2. Read the contents of README.md and summarize it in one sentence.
+    tools:
+      - type: function
+        function:
+          name: run_shell
+          description: Run a shell command on the local machine. Use this for commands like ls, pwd, cat, etc.
+          parameters:
+            type: object
+            properties:
+              command:
+                type: string
+                description: The shell command to execute.
+            required:
+              - command
+      - type: function
+        function:
+          name: read_file
+          description: Read a file and return its contents as markdown.
+          parameters:
+            type: object
+            properties:
+              path:
+                type: string
+                description: Absolute path to the file to read.
+            required:
+              - path

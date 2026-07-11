@@ -1,0 +1,8 @@
+{
+  "model": "/models/qwen3-4b-instruct",
+  "trust_remote_code": true,
+  "dtype": "bfloat16",
+  "max_model_len": 8192,
+  "gpu_memory_utilization": 0.6,
+  "tensor_parallel_size": 1
+}
