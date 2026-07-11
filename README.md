@@ -11,7 +11,7 @@ identical workloads.
 
 Dashboard overview:
 
-<img src="docs/assets/dashboard-screenshot.png" alt="Dashboard screenshot" width="700">
+<a href="docs/assets/dashboard-screenshot.png"><img src="docs/assets/dashboard-screenshot.png" alt="Dashboard screenshot" width="600"></a>
 
 Mean throughput (tok/s) by provider and prompt:
 
