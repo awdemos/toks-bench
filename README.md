@@ -7,6 +7,16 @@ client-side throughput and latency metrics. It is designed to make it easy to
 compare `llama.cpp` `llama-server`, Ollama, vLLM, and TensorRT-LLM deployments on
 identical workloads.
 
+## Example results
+
+Dashboard overview:
+
+![Dashboard screenshot](docs/assets/dashboard-screenshot.png)
+
+Mean throughput (tok/s) by provider and prompt:
+
+![Tok per sec by prompt](docs/assets/tok-per-sec-by-prompt.png)
+
 ## What it measures
 
 For each prompt, the tool issues `runs` streaming chat-completion requests and
