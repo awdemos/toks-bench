@@ -3,15 +3,17 @@
 # Runs one inference server at a time to avoid overcommitting the GB10 GPU.
 set -euo pipefail
 
-WORKDIR="/home/andrewh/spark-vllm-docker/toks-bench"
+WORKDIR="${WORKDIR:-/home/andrewh/spark-vllm-docker/toks-bench}"
 RESULTS="$WORKDIR/results/full"
 LOG="$RESULTS/sequential-gpu-sweep-$(date +%Y%m%d-%H%M%S).log"
 PROMPTS="short medium long code tool"
 RUNS=3
 TIMEOUT=900
-VLLM_IMAGE="vllm-node:latest"
-LLAMA_SERVER="/home/andrewh/llama.cpp/build/bin/llama-server"
-DEFAULT_MODEL="/home/andrewh/models/lowbit-2026/Qwen3.6-35B-A3B-IQ2_S-2.17bpw.gguf"
+# SECURITY: Pin this image to a digest to avoid mutable-tag supply-chain attacks.
+# Example: VLLM_IMAGE="vllm-node@sha256:..."
+VLLM_IMAGE="${VLLM_IMAGE:-vllm-node:latest}"
+LLAMA_SERVER="${LLAMA_SERVER:-/home/andrewh/llama.cpp/build/bin/llama-server}"
+DEFAULT_MODEL="${DEFAULT_MODEL:-/home/andrewh/models/lowbit-2026/Qwen3.6-35B-A3B-IQ2_S-2.17bpw.gguf}"
 
 cd "$WORKDIR"
 source .venv/bin/activate
@@ -73,7 +75,8 @@ run_vllm_container_named() {
   docker run --rm \
     --name "$name" \
     --gpus all \
-    --ipc=host \
+    --security-opt=no-new-privileges \
+    --cap-drop=ALL \
     -p "$port:$port" \
     -v /home/andrewh/models:/models:ro \
     -e CUDA_VISIBLE_DEVICES=0 \
@@ -106,7 +109,7 @@ if [ "$START_AT" -le 1 ]; then
   default_server_stop
   "$LLAMA_SERVER" \
     -m "$DEFAULT_MODEL" \
-    --host 0.0.0.0 --port 8080 -ngl 99 -c 131072 \
+    --host 127.0.0.1 --port 8080 -ngl 99 -c 131072 \
     --cont-batching --flash-attn on --temp 0.7 --jinja \
     2>&1 | tee /tmp/llama-server-qwen-8080.log &
   health_check "http://localhost:8080" || { log "llama-server-qwen not healthy"; exit 1; }
@@ -144,7 +147,7 @@ stop_vllm
 log "Starting llama-server-ornith on port 8081"
 $LLAMA_SERVER \
   -m /home/andrewh/models/ornith-1.0-35b/ornith-1.0-35b-Q4_K_M.gguf \
-  --host 0.0.0.0 --port 8081 -ngl 99 -c 8192 \
+  --host 127.0.0.1 --port 8081 -ngl 99 -c 8192 \
   --cont-batching --flash-attn on --temp 0.7 \
   2>&1 | tee /tmp/llama-server-ornith-8081.log &
   health_check "http://localhost:8081" || { log "llama-server-ornith failed to start"; stop_llama; exit 1; }

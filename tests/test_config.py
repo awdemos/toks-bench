@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from toks_bench.config import ConfigError, get_defaults, get_prompt, get_providers, load_config
+from toks_bench.security import SecurityError
 
 SAMPLE_CONFIG = """
 defaults:
@@ -20,7 +21,7 @@ providers:
     model: model-a
   b:
     kind: vllm
-    base_url: http://localhost:8000/v1
+    base_url: http://127.0.0.1:8000/v1
     model: model-b
 
 prompts:
@@ -49,6 +50,36 @@ def test_get_providers(tmp_path: Path) -> None:
     assert providers[0].kind == "llama-server"
 
 
+def test_get_providers_rejects_blocked_url(tmp_path: Path) -> None:
+    cfg_path = tmp_path / "config.yaml"
+    cfg_path.write_text(
+        "providers:\n  a:\n    kind: llama-server\n    base_url: http://169.254.169.254/v1\n    model: m\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(SecurityError, match="host is blocked"):
+        get_providers(load_config(cfg_path))
+
+
+def test_get_providers_rejects_private_url_by_default(tmp_path: Path) -> None:
+    cfg_path = tmp_path / "config.yaml"
+    cfg_path.write_text(
+        "providers:\n  a:\n    kind: llama-server\n    base_url: http://10.0.0.1/v1\n    model: m\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(SecurityError, match="not in allowlist"):
+        get_providers(load_config(cfg_path))
+
+
+def test_get_providers_allows_private_url_when_requested(tmp_path: Path) -> None:
+    cfg_path = tmp_path / "config.yaml"
+    cfg_path.write_text(
+        "providers:\n  a:\n    kind: llama-server\n    base_url: http://10.0.0.1/v1\n    model: m\n",
+        encoding="utf-8",
+    )
+    providers = get_providers(load_config(cfg_path), allow_internal_urls=True)
+    assert [p.name for p in providers] == ["a"]
+
+
 def test_get_defaults(tmp_path: Path) -> None:
     cfg_path = tmp_path / "config.yaml"
     cfg_path.write_text(SAMPLE_CONFIG, encoding="utf-8")
@@ -73,10 +104,21 @@ def test_get_prompt_file(tmp_path: Path) -> None:
     assert messages == [{"role": "user", "content": "file content"}]
 
 
+def test_get_prompt_file_rejects_traversal(tmp_path: Path) -> None:
+    cfg_path = tmp_path / "config.yaml"
+    (tmp_path / "secret.txt").write_text("secret", encoding="utf-8")
+    cfg_path.write_text(
+        "prompts:\n  bad:\n    file: ../secret.txt\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(SecurityError, match="contains '\\.\\.'"):
+        get_prompt(load_config(cfg_path), "bad", config_path=cfg_path)
+
+
 def test_missing_provider_key(tmp_path: Path) -> None:
     cfg_path = tmp_path / "config.yaml"
     cfg_path.write_text(
-        "providers:\n  a:\n    kind: llama-server\n    base_url: http://x/v1\n",
+        "providers:\n  a:\n    kind: llama-server\n    base_url: http://localhost/v1\n",
         encoding="utf-8",
     )
     with pytest.raises(ConfigError, match="missing required key 'model'"):

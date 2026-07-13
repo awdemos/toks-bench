@@ -8,6 +8,7 @@ from typing import Any
 import yaml
 
 from toks_bench.providers import Provider, ToolConfig
+from toks_bench.security import resolve_contained_path, validate_base_url
 
 
 class ConfigError(Exception):
@@ -26,7 +27,11 @@ def _require_mapping(data: Any, name: str) -> dict[str, Any]:
     return data
 
 
-def get_providers(config: dict[str, Any]) -> list[Provider]:
+def get_providers(
+    config: dict[str, Any],
+    *,
+    allow_internal_urls: bool = False,
+) -> list[Provider]:
     """Return validated provider list from config."""
     raw_providers = _require_mapping(config.get("providers"), "providers")
     providers: list[Provider] = []
@@ -35,11 +40,15 @@ def get_providers(config: dict[str, Any]) -> list[Provider]:
         for key in ("kind", "base_url", "model"):
             if key not in fields:
                 raise ConfigError(f"providers.{name} missing required key '{key}'")
+        base_url = validate_base_url(
+            str(fields["base_url"]),
+            allow_internal=allow_internal_urls,
+        )
         providers.append(
             Provider(
                 name=name,
                 kind=fields["kind"],
-                base_url=fields["base_url"],
+                base_url=base_url,
                 model=fields["model"],
             )
         )
@@ -66,7 +75,7 @@ def get_prompt(
     """Return the message list for a named prompt.
 
     Relative prompt file paths are resolved against the directory containing
-    the configuration file.
+    the configuration file and must remain within that directory.
     """
     prompts = _require_mapping(config.get("prompts"), "prompts")
     if name not in prompts:
@@ -80,10 +89,13 @@ def get_prompt(
         ]
 
     if "file" in prompt:
-        config_dir = Path(config_path).resolve().parent
-        prompt_path = config_dir / prompt["file"]
-        if not prompt_path.exists():
-            raise ConfigError(f"prompt file not found: {prompt_path}")
+        config_path_obj = Path(config_path)
+        config_dir = config_path_obj.resolve().parent
+        prompt_path = resolve_contained_path(
+            str(prompt["file"]),
+            config_dir,
+            must_exist=True,
+        )
         return [{"role": "user", "content": prompt_path.read_text(encoding="utf-8")}]
 
     raise ConfigError(f"prompts.{name} must define 'messages' or 'file'")

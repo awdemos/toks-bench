@@ -14,6 +14,8 @@ from openai.types.chat import (
     ChatCompletionToolParam,
 )
 
+from toks_bench.security import validate_base_url
+
 
 @dataclass(frozen=True)
 class Provider:
@@ -35,7 +37,10 @@ class ToolConfig:
 
 def create_client(provider: Provider) -> OpenAI:
     """Create an OpenAI client pointing at the provider's base URL."""
-    return OpenAI(base_url=provider.base_url, api_key="dummy", timeout=30.0)
+    # Re-validate at client creation time so direct programmatic use of Provider
+    # objects is also protected.
+    base_url = validate_base_url(provider.base_url)
+    return OpenAI(base_url=base_url, api_key="dummy", timeout=30.0)
 
 
 def complete_stream(

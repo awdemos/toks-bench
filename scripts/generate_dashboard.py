@@ -5,16 +5,21 @@ from __future__ import annotations
 import base64
 import csv
 import hashlib
+import html
 import json
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-
 
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
 CHARTS_DIR = RESULTS_DIR / "charts"
 OUTPUT = RESULTS_DIR / "dashboard.html"
+
+
+def escape_html(value: str) -> str:
+    """Escape a string for safe insertion into HTML."""
+    return html.escape(str(value), quote=True)
 
 
 def _display_path(path: Path) -> str:
@@ -183,7 +188,7 @@ def _render_provenance(rows: list[dict[str, Any]], csv_path: Path) -> str:
     providers = sorted({r["provider"] for r in rows})
     sha256 = _sha256_file(csv_path)
     csv_b64 = _embed_csv_download(csv_path)
-    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    generated_at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     return f"""
     <section id="provenance" class="card provenance">
@@ -191,7 +196,7 @@ def _render_provenance(rows: list[dict[str, Any]], csv_path: Path) -> str:
         <div class="provenance-grid">
             <div>
                 <div class="prov-label">Source file</div>
-                <div class="prov-value mono">{_display_path(csv_path)}</div>
+                <div class="prov-value mono">{escape_html(_display_path(csv_path))}</div>
             </div>
             <div>
                 <div class="prov-label">Rows</div>
@@ -215,7 +220,7 @@ def _render_provenance(rows: list[dict[str, Any]], csv_path: Path) -> str:
             </div>
             <div class="prov-wide">
                 <div class="prov-label">Reproduction commands</div>
-                <pre class="code-block">cd {_display_path(csv_path.parent.parent)}
+                <pre class="code-block">cd {escape_html(_display_path(csv_path.parent.parent))}
 .venv/bin/python -m toks_bench.charts --csv results/aggregate.csv --output-dir results/charts
 .venv/bin/python scripts/generate_dashboard.py</pre>
             </div>
@@ -242,34 +247,24 @@ def _render_verification_table(metadata: dict[str, Any]) -> str:
     direction = "lower is better" if lower_is_better else "higher is better"
 
     rows_html = []
-    if chart_type == "grouped_bar":
+    if chart_type == "grouped_bar" or chart_type == "heatmap":
         prompts = metadata.get("prompt_order", [])
         headers = ["Provider"] + [p.title() for p in prompts]
         for prov in metadata.get("providers", []):
-            cells = [f'<td class="provider">{prov["provider"]}</td>']
+            cells = [f'<td class="provider">{escape_html(prov["provider"])}</td>']
             for p in prompts:
                 val = prov.get(p)
-                cells.append(f"<td>{val if val is not None else 'N/A'}</td>")
+                cells.append(f"<td>{escape_html(str(val)) if val is not None else 'N/A'}</td>")
             rows_html.append("<tr>" + "".join(cells) + "</tr>")
-        thead = "<tr>" + "".join(f"<th>{h}</th>" for h in headers) + "</tr>"
-    elif chart_type == "heatmap":
-        prompts = metadata.get("prompt_order", [])
-        headers = ["Provider"] + [p.title() for p in prompts]
-        for prov in metadata.get("providers", []):
-            cells = [f'<td class="provider">{prov["provider"]}</td>']
-            for p in prompts:
-                val = prov.get(p)
-                cells.append(f"<td>{val if val is not None else 'N/A'}</td>")
-            rows_html.append("<tr>" + "".join(cells) + "</tr>")
-        thead = "<tr>" + "".join(f"<th>{h}</th>" for h in headers) + "</tr>"
+        thead = "<tr>" + "".join(f"<th>{escape_html(h)}</th>" for h in headers) + "</tr>"
     elif chart_type == "ranking":
         headers = ["Provider", "Mean tok/s"]
         for prov in metadata.get("providers", []):
             rows_html.append(
-                f'<tr><td class="provider">{prov["provider"]}</td>'
-                f'<td>{prov.get("mean_tok_per_sec", "N/A")}</td></tr>'
+                f'<tr><td class="provider">{escape_html(prov["provider"])}</td>'
+                f'<td>{escape_html(str(prov.get("mean_tok_per_sec", "N/A")))}</td></tr>'
             )
-        thead = "<tr>" + "".join(f"<th>{h}</th>" for h in headers) + "</tr>"
+        thead = "<tr>" + "".join(f"<th>{escape_html(h)}</th>" for h in headers) + "</tr>"
     else:
         return ""
 
@@ -308,12 +303,12 @@ def generate_dashboard() -> None:
         b64 = _embed_image(chart)
         if b64 is None:
             continue
-        title = chart.stem.replace("-", " ").replace("_", " ").title()
+        title = escape_html(chart.stem.replace("-", " ").replace("_", " ").title())
         metadata = _read_chart_sidecar(chart)
         verify_html = _render_verification_table(metadata) if metadata else ""
         chart_cards.append(
             f"""
-            <div class="card chart-card" id="chart-{chart.stem}">
+            <div class="card chart-card" id="chart-{escape_html(chart.stem)}">
                 <h3>{title}</h3>
                 <img src="{b64}" alt="{title}" loading="lazy" />
                 {verify_html}
@@ -328,12 +323,12 @@ def generate_dashboard() -> None:
             f"""
             <tr class="{cls}">
                 <td class="rank">#{i + 1}</td>
-                <td class="provider">{provider}</td>
+                <td class="provider">{escape_html(provider)}</td>
                 <td>{s['prompts']}</td>
                 <td>{_fmt(s['mean_tok_per_sec'])}</td>
                 <td>{_fmt(s['mean_ttft_ms'])}</td>
                 <td>{_fmt(s['mean_tpot_ms'])}</td>
-                <td>{s['best_prompt']['file']}</td>
+                <td>{escape_html(s['best_prompt']['file'])}</td>
             </tr>
             """
         )
@@ -343,14 +338,14 @@ def generate_dashboard() -> None:
         table_rows.append(
             f"""
             <tr>
-                <td>{r['provider']}</td>
-                <td>{Path(r['file']).stem.rsplit('-', 1)[-1]}</td>
+                <td>{escape_html(r['provider'])}</td>
+                <td>{escape_html(Path(r['file']).stem.rsplit('-', 1)[-1])}</td>
                 <td>{int(r['runs'])}</td>
                 <td>{_fmt(r['tok_per_sec_mean'])}</td>
                 <td>{_fmt(r['ttft_ms_mean'])}</td>
                 <td>{_fmt(r['tpot_ms_mean'])}</td>
                 <td>{_fmt(r['output_tokens_mean'])}</td>
-                <td>{r['finish_reasons']}</td>
+                <td>{escape_html(str(r['finish_reasons']))}</td>
             </tr>
             """
         )
@@ -754,11 +749,11 @@ code {{
         </div>
         <div class="metric">
             <div class="value">{_fmt(top[1]['mean_tok_per_sec'])}</div>
-            <div class="label">Best tok/s<br><small>{top[0]}</small></div>
+            <div class="label">Best tok/s<br><small>{escape_html(top[0])}</small></div>
         </div>
         <div class="metric">
             <div class="value">{_fmt(bottom[1]['mean_tok_per_sec'])}</div>
-            <div class="label">Lowest tok/s<br><small>{bottom[0]}</small></div>
+            <div class="label">Lowest tok/s<br><small>{escape_html(bottom[0])}</small></div>
         </div>
     </section>
 
@@ -834,7 +829,7 @@ code {{
     </div>
 
     <footer>
-        © 2026 VibeCodingAgency.com · Generated by toks-bench · {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}
+        © 2026 VibeCodingAgency.com · Generated by toks-bench · {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}
     </footer>
 </div>
 

@@ -9,20 +9,22 @@ description = "Reproducible token-throughput benchmark for OpenAI-compatible LLM
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "openai>=1.35.0",
-    "pyyaml>=6.0",
-    "tabulate>=0.9",
-    "matplotlib>=3.7.0",
-    "pandas>=2.0.0",
+    "openai==2.44.0",
+    "pyyaml==6.0.3",
+    "tabulate==0.9.0",
+    "matplotlib==3.11.0",
+    "pandas==3.0.3",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0",
-    "pytest-asyncio>=0.23",
-    "respx>=0.21",
-    "ruff>=0.4",
-    "basedpyright>=1.12",
+    "pytest==8.4.0",
+    "pytest-asyncio==0.26.0",
+    "respx==0.22.0",
+    "ruff==0.12.0",
+    "basedpyright==1.32.0",
+    "bandit[toml]==1.9.2",
+    "pip-audit==2.10.0",
 ]
 
 [project.scripts]
@@ -39,7 +41,10 @@ target-version = "py311"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM", "S"]
+
+[tool.bandit]
+exclude_dirs = ["tests"]
 
 [tool.basedpyright]
 pythonVersion = "3.11"

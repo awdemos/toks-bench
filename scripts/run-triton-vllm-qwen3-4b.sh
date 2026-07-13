@@ -3,7 +3,7 @@
 # for the local Qwen3-4B-Instruct-2507 checkpoint, then benchmark it.
 set -euo pipefail
 
-WORKDIR="/home/andrewh/spark-vllm-docker/toks-bench"
+WORKDIR="${WORKDIR:-/home/andrewh/spark-vllm-docker/toks-bench}"
 RESULTS="$WORKDIR/results/full"
 LOG="$RESULTS/triton-vllm-qwen3-4b-sweep-$(date +%Y%m%d-%H%M%S).log"
 PROMPTS="short medium long code tool"
@@ -11,8 +11,12 @@ RUNS=3
 TIMEOUT=900
 PORT=9000
 CONTAINER_NAME="triton-vllm-qwen3-4b"
-TRITON_IMAGE="nvcr.io/nvidia/tritonserver:26.03-vllm-python-py3"
+# SECURITY: Pin this image to a digest to avoid mutable-tag supply-chain attacks.
+# Example: TRITON_IMAGE="nvcr.io/nvidia/tritonserver@sha256:..."
+TRITON_IMAGE="${TRITON_IMAGE:-nvcr.io/nvidia/tritonserver:26.03-vllm-python-py3}"
 MODEL_REPO="$WORKDIR/triton_model_repository"
+HOST_MODEL_DIR="${HOST_MODEL_DIR:-/home/andrewh/models/qwen3-4b-instruct}"
+HOST_MODELS_ROOT="${HOST_MODELS_ROOT:-/home/andrewh/models}"
 
 cd "$WORKDIR"
 source .venv/bin/activate
@@ -61,9 +65,11 @@ log "Pulling/launching Triton+vLLM container for Qwen3-4B on port $PORT"
 docker run --rm \
   --name "$CONTAINER_NAME" \
   --gpus all \
-  --ipc=host \
-  --net=host \
-  -v /home/andrewh/models:/models:ro \
+  --security-opt=no-new-privileges \
+  --cap-drop=ALL \
+  -p "$PORT:$PORT" \
+  -v "$HOST_MODELS_ROOT:/models:ro" \
+  -v "$HOST_MODEL_DIR:/models/qwen3-4b-instruct:ro" \
   -v "$MODEL_REPO:/triton_model_repository:ro" \
   -e CUDA_VISIBLE_DEVICES=0 \
   -e HF_HUB_DISABLE_TELEMETRY=1 \

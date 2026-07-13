@@ -2,7 +2,7 @@
 # Launch vLLM serving Qwen3-4B-Instruct-2507 via Docker and benchmark it.
 set -euo pipefail
 
-WORKDIR="/home/andrewh/spark-vllm-docker/toks-bench"
+WORKDIR="${WORKDIR:-/home/andrewh/spark-vllm-docker/toks-bench}"
 RESULTS="$WORKDIR/results/full"
 LOG="$RESULTS/vllm-qwen3-4b-sweep-$(date +%Y%m%d-%H%M%S).log"
 PROMPTS="short medium long code tool"
@@ -10,8 +10,11 @@ RUNS=3
 TIMEOUT=900
 PORT=8004
 CONTAINER_NAME="vllm-qwen3-4b-8004"
-VLLM_IMAGE="vllm-node:latest"
+# SECURITY: Pin this image to a digest to avoid mutable-tag supply-chain attacks.
+# Example: VLLM_IMAGE="vllm-node@sha256:..."
+VLLM_IMAGE="${VLLM_IMAGE:-vllm-node:latest}"
 MODEL_DIR="/models/qwen3-4b-instruct"
+HOST_MODEL_DIR="${HOST_MODEL_DIR:-/home/andrewh/models/qwen3-4b-instruct}"
 
 cd "$WORKDIR"
 source .venv/bin/activate
@@ -64,9 +67,10 @@ log "Starting vLLM Qwen3-4B-Instruct-2507 on port $PORT"
 docker run --rm \
   --name "$CONTAINER_NAME" \
   --gpus all \
-  --ipc=host \
+  --security-opt=no-new-privileges \
+  --cap-drop=ALL \
   -p "$PORT:$PORT" \
-  -v /home/andrewh/models:/models:ro \
+  -v "$HOST_MODEL_DIR:$MODEL_DIR:ro" \
   -e CUDA_VISIBLE_DEVICES=0 \
   "$VLLM_IMAGE" \
   vllm serve "$MODEL_DIR" \

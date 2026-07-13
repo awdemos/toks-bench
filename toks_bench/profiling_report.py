@@ -15,6 +15,7 @@ from typing import Any
 from tabulate import tabulate
 
 from toks_bench.config import load_config
+from toks_bench.security import escape_markdown
 
 
 def _load_provider_models(config_path: Path) -> dict[str, str]:
@@ -168,8 +169,8 @@ def _generate_report(
         model = provider_models.get(provider, meta.get(provider, {}).get("model", "unknown"))
         app_rows.append(
             [
-                provider,
-                model,
+                escape_markdown(provider),
+                escape_markdown(model),
                 summary["prompts"],
                 f"{summary['successful_runs']:.0f}/{summary['total_runs']}",
                 f"{summary['success_rate']:.1%}",
@@ -211,8 +212,8 @@ def _generate_report(
             prompt = _prompt_from_file(row["file"])
             stage_rows.append(
                 [
-                    provider,
-                    prompt,
+                    escape_markdown(provider),
+                    escape_markdown(prompt),
                     int(row["runs"]),
                     f"{_success_rate(row['finish_reasons'], int(row['runs'])):.1%}",
                     f"{float(row['output_tokens_mean']):.0f}",
@@ -298,7 +299,10 @@ def _generate_report(
         runs = int(row["runs"])
         success = _success_rate(row["finish_reasons"], runs)
         if success < 1.0:
-            reasons = ", ".join(f"{k}: {v}" for k, v in row["finish_reasons"].items())
+            reasons = ", ".join(
+                f"{escape_markdown(str(k))}: {escape_markdown(str(v))}"
+                for k, v in row["finish_reasons"].items()
+            )
             issues.append((provider, prompt, f"partial failure ({reasons})"))
         if float(row["ttft_ms_mean"]) > 2000:
             issues.append(
@@ -325,7 +329,10 @@ def _generate_report(
             issues.append((provider, prompt, "Ollama throughput is CPU-bound; run on GPU"))
 
     if issues:
-        issue_rows = [[provider, prompt, desc] for provider, prompt, desc in sorted(issues)]
+        issue_rows = [
+            [escape_markdown(provider), escape_markdown(prompt), escape_markdown(desc)]
+            for provider, prompt, desc in sorted(issues)
+        ]
         lines.append(
             tabulate(
                 issue_rows,
@@ -348,6 +355,7 @@ def _generate_report(
 
     recs: list[str] = []
     for provider in sorted(grouped):
+        safe_provider = escape_markdown(provider)
         summary = _provider_summary(grouped[provider])
         rows_p = grouped[provider]
         has_errors = any(
@@ -355,31 +363,32 @@ def _generate_report(
         )
         if summary["success_rate"] < 1.0:
             recs.append(
-                f"**{provider}**: {1 - summary['success_rate']:.1%} of runs failed or timed out. "
-                "Increase `--max-model-len` or per-run timeout; verify server health "
-                "before benchmarking."
+                f"**{safe_provider}**: {1 - summary['success_rate']:.1%} "
+                "of runs failed or timed out. Increase `--max-model-len` or per-run "
+                "timeout; verify server health before benchmarking."
             )
         if summary["mean_tok_per_sec"] < 10:
             recs.append(
-                f"**{provider}**: throughput ({summary['mean_tok_per_sec']:.1f} tok/s) "
-                "is very low. Ensure the model is fully GPU-offloaded (`-ngl 99`) and "
-                "not falling back to CPU."
+                f"**{safe_provider}**: throughput ({summary['mean_tok_per_sec']:.1f} tok/s) "
+                "is very low. Ensure the model is fully GPU-offloaded (`-ngl 99`) "
+                "and not falling back to CPU."
             )
         if summary["mean_ttft_ms"] > 2000:
             recs.append(
-                f"**{provider}**: TTFT is {summary['mean_ttft_ms']:.0f} ms on average. "
+                f"**{safe_provider}**: TTFT is {summary['mean_ttft_ms']:.0f} ms on average. "
                 "Consider enabling prefix caching, reducing context size, or using a "
                 "smaller draft model."
             )
         if summary["mean_tpot_ms"] > 100:
             recs.append(
-                f"**{provider}**: TPOT is {summary['mean_tpot_ms']:.0f} ms/token. "
+                f"**{safe_provider}**: TPOT is {summary['mean_tpot_ms']:.0f} ms/token. "
                 "Profile with `nsys` to identify whether the bottleneck is memory "
                 "bandwidth or kernel launch."
             )
         if not has_errors and summary["mean_tok_per_sec"] >= 30:
             recs.append(
-                f"**{provider}**: healthy high-throughput configuration. Capture as baseline."
+                f"**{safe_provider}**: healthy high-throughput configuration. "
+                "Capture as baseline."
             )
 
     for rec in recs:

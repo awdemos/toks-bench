@@ -1,0 +1,46 @@
+name: Security Gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.7.0"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies with hashes
+        run: uv sync --locked
+
+      - name: Run ruff with security rules
+        run: uv run ruff check --select S toks_bench scripts
+
+      - name: Run bandit
+        run: uv run bandit -r toks_bench scripts
+
+      - name: Run pip-audit
+        run: uv run pip-audit --requirement requirements.txt --require-hashes
+
+      - name: Secret scan placeholder
+        run: |
+          # TODO: replace with a real secret scanner such as GitHub secret scanning,
+          # truffleHog, or git-secrets. This step prints a reminder and exits cleanly
+          # so CI is not blocked while the project selects a scanner.
+          echo "Secret-scan placeholder: no live scanner configured yet."
+          echo "Review requirements.txt, uv.lock, and shell scripts for embedded tokens before merging."
+
+      - name: Run tests
+        run: uv run pytest -q

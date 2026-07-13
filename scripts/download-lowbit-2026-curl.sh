@@ -2,13 +2,28 @@
 # Download the five selected 2026 low-bit models using direct HF URLs.
 set -euo pipefail
 
-TARGET_DIR="/home/andrewh/models/lowbit-2026"
+TARGET_DIR="${TARGET_DIR:-/home/andrewh/models/lowbit-2026}"
 mkdir -p "$TARGET_DIR"
 cd "$TARGET_DIR"
+
+verify_sha256() {
+  local file="$1" expected="${2:-}"
+  if [ -z "$expected" ]; then
+    return 0
+  fi
+  local actual
+  actual=$(sha256sum "$file" | awk '{print $1}')
+  if [[ "$actual" != "$expected" ]]; then
+    echo "ERROR: checksum mismatch for $file (expected $expected, got $actual)" >&2
+    return 1
+  fi
+  echo "Verified SHA-256 of $file"
+}
 
 download_file() {
   local repo="$1"
   local file="$2"
+  local expected_sha256="${3:-}"
   local url="https://huggingface.co/${repo}/resolve/main/${file}"
   echo "=== Downloading ${repo}/${file} ==="
   if command -v wget >/dev/null 2>&1; then
@@ -17,6 +32,12 @@ download_file() {
     echo "wget not found; trying curl"
     curl -L --retry 10 --retry-delay 5 --connect-timeout 60 --max-time 0 --progress-bar \
       -o "${file}" "${url}"
+  fi
+  if [ -n "$expected_sha256" ]; then
+    verify_sha256 "$file" "$expected_sha256"
+  else
+    echo "Record this SHA-256 and pass it as the third argument to verify on subsequent runs:"
+    sha256sum "$file"
   fi
 }
 

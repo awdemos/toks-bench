@@ -3,14 +3,14 @@
 # Runs one model at a time on the GB10 GPU to avoid overcommit.
 set -euo pipefail
 
-WORKDIR="/home/andrewh/spark-vllm-docker/toks-bench"
+WORKDIR="${WORKDIR:-/home/andrewh/spark-vllm-docker/toks-bench}"
 RESULTS="$WORKDIR/results/full"
 LOG="$RESULTS/lowbit-sweep-$(date +%Y%m%d-%H%M%S).log"
 PROMPTS="short medium long code tool"
 RUNS=3
 TIMEOUT=900
-LLAMA_SERVER="/home/andrewh/llama.cpp/build/bin/llama-server"
-MODEL_DIR="/home/andrewh/models/lowbit-2026"
+LLAMA_SERVER="${LLAMA_SERVER:-/home/andrewh/llama.cpp/build/bin/llama-server}"
+MODEL_DIR="${MODEL_DIR:-/home/andrewh/models/lowbit-2026}"
 
 cd "$WORKDIR"
 source .venv/bin/activate
@@ -63,7 +63,7 @@ run_llama_server() {
   shift 3
   "$LLAMA_SERVER" \
     -m "$model" \
-    --host 0.0.0.0 --port "$port" -ngl 99 -c "$ctx" \
+    --host 127.0.0.1 --port "$port" -ngl 99 -c "$ctx" \
     --cont-batching --flash-attn on --temp 0.7 \
     --jinja "$@" \
     2>&1 | tee "/tmp/llama-server-lowbit-${port}.log" &

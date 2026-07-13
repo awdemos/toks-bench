@@ -3,13 +3,15 @@
 # gemma4-26b-a4b-nvfp4 and diffusiongemma-26b-a4b-it
 set -euo pipefail
 
-WORKDIR="/home/andrewh/code/spark-vllm-docker/toks-bench"
+WORKDIR="${WORKDIR:-/home/andrewh/code/spark-vllm-docker/toks-bench}"
 RESULTS="$WORKDIR/results/full"
 LOG="$RESULTS/spark-models-sweep-$(date +%Y%m%d-%H%M%S).log"
 PROMPTS="short medium long code tool"
 RUNS=3
 TIMEOUT=900
-VLLM_IMAGE="vllm-node:latest"
+# SECURITY: Pin this image to a digest to avoid mutable-tag supply-chain attacks.
+# Example: VLLM_IMAGE="vllm-node@sha256:..."
+VLLM_IMAGE="${VLLM_IMAGE:-vllm-node:latest}"
 
 cd "$WORKDIR"
 source .venv/bin/activate
@@ -63,7 +65,8 @@ log "Starting vLLM Gemma4-26B-A4B-NVFP4 on port 8005"
 docker run --rm \
   --name vllm-gemma4-8005 \
   --gpus all \
-  --ipc=host \
+  --security-opt=no-new-privileges \
+  --cap-drop=ALL \
   -p 8005:8005 \
   -v /home/andrewh/models:/models:ro \
   -e CUDA_VISIBLE_DEVICES=0 \
@@ -96,7 +99,8 @@ log "Starting vLLM DiffusionGemma-26B-A4B-IT on port 8006"
 docker run --rm \
   --name vllm-diffusiongemma-8006 \
   --gpus all \
-  --ipc=host \
+  --security-opt=no-new-privileges \
+  --cap-drop=ALL \
   -p 8006:8006 \
   -v /home/andrewh/models:/models:ro \
   -v "/home/andrewh/code/spark-vllm-docker/mods/diffusiongemma:/diffusiongemma-mod:ro" \
